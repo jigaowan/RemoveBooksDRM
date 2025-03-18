@@ -29,7 +29,7 @@ index=1
 
 for file in "$BOOKS_EPUB_DIR"/*.epub
 do
-    itemName=$(defaults read "$file/iTunesMetadata" itemName)
+    itemName=$(plutil -extract itemName raw "$file/iTunesMetadata.plist")
     if [[ -z "$itemName" ]]; then
         echo "Failed to extract itemName from $file"
         continue
