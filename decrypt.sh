@@ -27,6 +27,7 @@ BOOKS_EPUB_DIR=~/Library/Containers/com.apple.BKAgentService/Data/Documents/iBoo
 
 mkdir -p "$BOOKS_HOME/tmp"
 mkdir -p "./decrypted_books"
+chmod +x ./metadata_resolver.sh
 
 epubFiles=()
 itemNames=()
@@ -78,6 +79,8 @@ do
             rm -rf "$copiedFilePath"
             continue
         fi
+
+        ./metadata_resolver.sh "$selected_epub" "$decryptedEpubPath"
 
         mv "$decryptedEpubPath" ./decrypted_books
         rm -rf "$copiedFilePath"
