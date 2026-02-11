@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [[ $(csrutil status) == *"enabled." ]]; then
     echo "SIP must be disabled."
@@ -25,8 +25,8 @@ function injectDylib {
 BOOKS_HOME=~/Library/Containers/com.apple.iBooksX/Data
 BOOKS_EPUB_DIR=~/Library/Containers/com.apple.BKAgentService/Data/Documents/iBooks/Books
 
-mkdir $BOOKS_HOME/tmp
-mkdir ./decrypted_books
+mkdir -p "$BOOKS_HOME/tmp"
+mkdir -p "./decrypted_books"
 
 epubFiles=()
 itemNames=()
@@ -49,8 +49,15 @@ do
 done
 
 
+echo "Enter the number of the book to decrypt, or q to quit."
+PS3="Selection (q to quit): "
 select bookSel in "${itemNames[@]}";
 do
+    if [[ "$REPLY" == "q" || "$REPLY" == "Q" ]]; then
+        echo "Exiting."
+        break
+    fi
+
     # Validate the user's input
     if [[ "$REPLY" =~ ^[0-9]+$ ]] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le ${#itemNames[@]} ]; then
 
@@ -66,19 +73,25 @@ do
         copiedFilePath="$BOOKS_HOME/tmp/$fileName"
         decryptedEpubPath="${copiedFilePath%.epub}_decrypted.epub"
 
-        mv $decryptedEpubPath ./decrypted_books
+        if [ ! -d "$decryptedEpubPath" ]; then
+            echo "Failed to locate decrypted output: $decryptedEpubPath"
+            rm -rf "$copiedFilePath"
+            continue
+        fi
+
+        mv "$decryptedEpubPath" ./decrypted_books
         rm -rf "$copiedFilePath"
 
         # convert it to an actual epub...
-        cd "./decrypted_books/${fileName%.epub}_decrypted.epub"
+        cd "./decrypted_books/${fileName%.epub}_decrypted.epub" || continue
         zip -r "../${fileName}" .
 
         # and now we clean up.
-        cd ../../
+        cd ../../ || continue
         rm -rf "./decrypted_books/${fileName%.epub}_decrypted.epub"
+        echo "Finished: ./decrypted_books/${fileName}"
 
     else
-        echo "Invalid selection. Please select a number from 1 to ${#itemNames[@]}."
+        echo "Invalid selection. Please select a number from 1 to ${#itemNames[@]}, or q to quit."
     fi
-    break
 done
