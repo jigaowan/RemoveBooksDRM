@@ -1,9 +1,14 @@
-#!/bin/zsh
+#!/bin/sh
 
-if [[ $(csrutil status) != *"disabled." ]]; then
+if [[ $(csrutil status) == *"enabled." ]]; then
     echo "SIP must be disabled."
     echo "Consult this documentation for help doing this: https://developer.apple.com/documentation/security/disabling_and_enabling_system_integrity_protection#3599244"
     exit 1
+fi
+
+if [[ $(csrutil status) == *"unknown"* ]]; then
+    echo "SIP status unknown."
+    echo "Make sure SIP is disabled."
 fi
 
 if [[ $(defaults read /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation) != "1" ]]; then
@@ -52,7 +57,7 @@ do
         selected_epub="${epubFiles[REPLY]}"
 
         open "$BOOKS_HOME/tmp"
-        
+
         cp -R "$selected_epub" "$BOOKS_HOME/tmp"
 
         injectDylib
@@ -77,5 +82,3 @@ do
     fi
     break
 done
-
-

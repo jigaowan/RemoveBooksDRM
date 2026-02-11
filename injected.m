@@ -28,7 +28,7 @@ NSData* get_sinf(NSString *path) {
         printf("Failed to extract base64-encoded data\n");
         return nil;
     }
-    
+
     // Decode base64
     NSData *sdata_decoded = [[NSData alloc] initWithBase64EncodedData:sdata options:0];
     if (sdata_decoded == nil) {
@@ -69,7 +69,7 @@ NSData* try_decrypt(NSData *sinfData, NSString *path) {
 NSString *relativePathFromAbsolutePath(NSString *absolutePath, NSString *directoryPath) {
     NSRange range = [absolutePath rangeOfString:directoryPath];
     if (range.location == 0) {
-        return [absolutePath substringFromIndex:range.length]; 
+        return [absolutePath substringFromIndex:range.length];
     }
     return absolutePath;
 }
@@ -83,8 +83,8 @@ bool write_file(NSString *filePath, NSData *content) {
         NSLog(@"Creating dir: %@", dirPath);
 
         NSError *error = nil;
-        [fm createDirectoryAtPath:dirPath 
-            withIntermediateDirectories:YES 
+        [fm createDirectoryAtPath:dirPath
+            withIntermediateDirectories:YES
             attributes:nil
             error:&error];
 
@@ -128,7 +128,7 @@ NSString* make_base_epub_dir(NSString *originalName, NSString *outputDir) {
 void try_decrypt_epub(NSString *inputPath) {
 
     NSArray *normalTransfer = @[@"mimetype", @"META-INF/container.xml"];
-    NSArray *doNotTransfer = @[@"iTunesMetadata.plist", @"iTunesMetadata-original.plist", @"iTunesArtwork"];
+    NSArray *doNotTransfer = @[@"iTunesMetadata.plist", @"iTunesMetadata-original.plist", @"iTunesArtwork", @"META-INF/encryption.xml", @"META-INF/signatures.xml", @"META-INF/sinf.xml"];
 
     NSData *sinfData = get_sinf(inputPath);
 
@@ -195,7 +195,7 @@ void try_decrypt_epub(NSString *inputPath) {
 
         NSLog(@"REL: %@", fileRelRoot);
         NSLog(@"OUTPUT_PATH: %@", fileOutputPath);
-        
+
         if (!write_file(fileOutputPath, fileContents)) {
             NSLog(@"Could not write file. Skipping.");
             continue;
