@@ -31,7 +31,6 @@ chmod +x ./metadata_resolver.sh
 
 epubFiles=()
 itemNames=()
-index=1
 
 for file in "$BOOKS_EPUB_DIR"/*.epub
 do
@@ -40,20 +39,23 @@ do
         echo "Failed to extract itemName from $file"
         continue
     fi
-    # If there are more than 21 files, select does not list all the options
-    if [ "$index" -ge 22 ]; then
-        echo "$index) $itemName"
-    fi
-    index=$((index+1))
     epubFiles+=("$file")
     itemNames+=("$itemName")
 done
 
+function printBookMenu {
+    echo "Enter the number of the book to decrypt, or q to quit."
+    local i
+    for i in "${!itemNames[@]}"; do
+        echo "$((i + 1))) ${itemNames[$i]}"
+    done
+}
 
-echo "Enter the number of the book to decrypt, or q to quit."
-PS3="Selection (q to quit): "
-select bookSel in "${itemNames[@]}";
+while true
 do
+    printBookMenu
+    read -r -p "Selection (q to quit): " REPLY
+
     if [[ "$REPLY" == "q" || "$REPLY" == "Q" ]]; then
         echo "Exiting."
         break
@@ -62,7 +64,7 @@ do
     # Validate the user's input
     if [[ "$REPLY" =~ ^[0-9]+$ ]] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le ${#itemNames[@]} ]; then
 
-        selected_epub="${epubFiles[REPLY]}"
+        selected_epub="${epubFiles[REPLY-1]}"
 
         open "$BOOKS_HOME/tmp"
 
@@ -97,4 +99,5 @@ do
     else
         echo "Invalid selection. Please select a number from 1 to ${#itemNames[@]}, or q to quit."
     fi
+    echo
 done
