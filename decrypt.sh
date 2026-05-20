@@ -69,6 +69,47 @@ function packageEpub {
     )
 }
 
+function detectArtworkExtension {
+    local artworkFile="$1"
+    local format
+    format=$(sips -g format "$artworkFile" 2>/dev/null | awk -F': ' '/format:/{print tolower($2); exit}')
+
+    case "$format" in
+        jpeg|jpg) echo "jpg" ;;
+        png) echo "png" ;;
+        gif) echo "gif" ;;
+        tiff|tif) echo "tiff" ;;
+        webp) echo "webp" ;;
+        *) echo "artwork" ;;
+    esac
+}
+
+function copyITunesArtwork {
+    local sourceEpub="$1"
+    local outputEpub="$2"
+    local artworkFile="$sourceEpub/iTunesArtwork"
+
+    if [ ! -f "$artworkFile" ]; then
+        return 0
+    fi
+
+    local outputDir
+    local outputBase
+    local extension
+    local outputArtwork
+    outputDir=$(dirname "$outputEpub")
+    outputBase=$(basename "$outputEpub" .epub)
+    extension=$(detectArtworkExtension "$artworkFile")
+    outputArtwork="$outputDir/$outputBase.$extension"
+
+    if ! cp "$artworkFile" "$outputArtwork"; then
+        echo "Failed to copy iTunes artwork: $artworkFile" >&2
+        return 1
+    fi
+
+    echo "Copied iTunes artwork: $outputArtwork"
+}
+
 while true
 do
     printBookMenu
@@ -108,6 +149,11 @@ do
         # convert it to an actual epub...
         if ! packageEpub "./decrypted_books/${fileName%.epub}_decrypted.epub" "../${fileName}"; then
             echo "Failed to package EPUB: ./decrypted_books/${fileName}"
+            continue
+        fi
+
+        if ! copyITunesArtwork "$selected_epub" "./decrypted_books/${fileName}"; then
+            echo "Failed to export iTunes artwork for: $fileName"
             continue
         fi
 
