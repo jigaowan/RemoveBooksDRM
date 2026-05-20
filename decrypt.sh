@@ -21,6 +21,18 @@ function injectDylib {
 	DYLD_INSERT_LIBRARIES=./injected.dylib /System/Applications/Books.app/Contents/MacOS/Books
 }
 
+function clearBooksTmp {
+    local tmpDir="$BOOKS_HOME/tmp"
+
+    if [ -z "$tmpDir" ] || [ "$tmpDir" = "/" ]; then
+        echo "Refusing to clear unsafe tmp path: $tmpDir" >&2
+        return 1
+    fi
+
+    mkdir -p "$tmpDir"
+    find "$tmpDir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+}
+
 
 BOOKS_HOME=~/Library/Containers/com.apple.iBooksX/Data
 BOOKS_EPUB_DIR=~/Library/Containers/com.apple.BKAgentService/Data/Documents/iBooks/Books
@@ -126,6 +138,11 @@ do
         selected_epub="${epubFiles[REPLY-1]}"
 
         open "$BOOKS_HOME/tmp"
+
+        if ! clearBooksTmp; then
+            echo "Failed to clear Books tmp directory: $BOOKS_HOME/tmp" >&2
+            continue
+        fi
 
         cp -R "$selected_epub" "$BOOKS_HOME/tmp"
 
