@@ -243,10 +243,13 @@ add_notice_value "EPUB writing-mode" "$EPUB_PRIMARY_WRITING_MODE"
 add_notice_value "EPUB book-type" "$EPUB_BOOK_TYPE"
 
 echo
-echo "Main metadata candidates:"
+echo "Title/author/publisher candidates:"
 print_main_candidate "title" "$ITUNES_TITLE" "$EPUB_TITLE"
 print_main_candidate "author" "$ITUNES_AUTHOR" "$EPUB_AUTHOR"
 print_main_candidate "publisher" "$ITUNES_PUBLISHER" "$EPUB_PUBLISHER"
+
+echo
+echo "Description candidates:"
 print_main_candidate "description" "$ITUNES_DESCRIPTION" "$EPUB_DESCRIPTION"
 
 echo
@@ -263,18 +266,23 @@ fi
 if [ "$MAIN_DIFF_COUNT" -eq 0 ]; then
     echo
     echo "No differences found in the four writable metadata fields. Keeping EPUB metadata."
-    CHOICE="epub"
+    COVER_CORE="no"
+    COVER_DESCRIPTION="no"
 else
     echo
-    echo "Choose main metadata source for final decrypted EPUB:"
-    echo "1) Use iTunes main metadata"
-    echo "2) Keep EPUB main metadata"
+    echo "Choose iTunes metadata groups to apply:"
+    echo "1) Overwrite title, author, publisher"
+    echo "2) Overwrite description"
+    echo "3) Overwrite title, author, publisher, and description"
+    echo "4) Do not overwrite metadata"
     while true; do
-        read -r -p "Selection [1/2]: " user_choice
+        read -r -p "Selection [1/2/3/4]: " user_choice
         case "$user_choice" in
-            1) CHOICE="itunes"; break ;;
-            2) CHOICE="epub"; break ;;
-            *) echo "Invalid selection. Enter 1 or 2." ;;
+            1) COVER_CORE="yes"; COVER_DESCRIPTION="no"; break ;;
+            2) COVER_CORE="no"; COVER_DESCRIPTION="yes"; break ;;
+            3) COVER_CORE="yes"; COVER_DESCRIPTION="yes"; break ;;
+            4) COVER_CORE="no"; COVER_DESCRIPTION="no"; break ;;
+            *) echo "Invalid selection. Enter 1, 2, 3, or 4." ;;
         esac
     done
 fi
@@ -282,7 +290,8 @@ fi
 select_final_value() {
     local itunes_value="${1:-}"
     local epub_value="${2:-}"
-    if [ "$CHOICE" = "itunes" ] && [ -n "$itunes_value" ]; then
+    local cover_group="$3"
+    if [ "$cover_group" = "yes" ] && [ -n "$itunes_value" ]; then
         printf '%s' "$itunes_value"
     else
         printf '%s' "$epub_value"
@@ -291,46 +300,56 @@ select_final_value() {
 
 select_final_source() {
     local itunes_value="${1:-}"
-    if [ "$CHOICE" = "itunes" ] && [ -n "$itunes_value" ]; then
+    local cover_group="$2"
+    if [ "$cover_group" = "yes" ] && [ -n "$itunes_value" ]; then
         printf 'iTunes'
     else
         printf 'EPUB'
     fi
 }
 
-FINAL_TITLE=$(select_final_value "$ITUNES_TITLE" "$EPUB_TITLE")
-FINAL_AUTHOR=$(select_final_value "$ITUNES_AUTHOR" "$EPUB_AUTHOR")
-FINAL_PUBLISHER=$(select_final_value "$ITUNES_PUBLISHER" "$EPUB_PUBLISHER")
-FINAL_DESCRIPTION=$(select_final_value "$ITUNES_DESCRIPTION" "$EPUB_DESCRIPTION")
+FINAL_TITLE=$(select_final_value "$ITUNES_TITLE" "$EPUB_TITLE" "$COVER_CORE")
+FINAL_AUTHOR=$(select_final_value "$ITUNES_AUTHOR" "$EPUB_AUTHOR" "$COVER_CORE")
+FINAL_PUBLISHER=$(select_final_value "$ITUNES_PUBLISHER" "$EPUB_PUBLISHER" "$COVER_CORE")
+FINAL_DESCRIPTION=$(select_final_value "$ITUNES_DESCRIPTION" "$EPUB_DESCRIPTION" "$COVER_DESCRIPTION")
 
 echo
 echo "Final metadata preview:"
-echo "  - title ($(select_final_source "$ITUNES_TITLE"))"
+echo "  - title ($(select_final_source "$ITUNES_TITLE" "$COVER_CORE"))"
 print_value_line "value" "$FINAL_TITLE"
-echo "  - author ($(select_final_source "$ITUNES_AUTHOR"))"
+echo "  - author ($(select_final_source "$ITUNES_AUTHOR" "$COVER_CORE"))"
 print_value_line "value" "$FINAL_AUTHOR"
-echo "  - publisher ($(select_final_source "$ITUNES_PUBLISHER"))"
+echo "  - publisher ($(select_final_source "$ITUNES_PUBLISHER" "$COVER_CORE"))"
 print_value_line "value" "$FINAL_PUBLISHER"
-echo "  - description ($(select_final_source "$ITUNES_DESCRIPTION"))"
+echo "  - description ($(select_final_source "$ITUNES_DESCRIPTION" "$COVER_DESCRIPTION"))"
 print_value_line "value" "$FINAL_DESCRIPTION" 140
 
-if [ "$CHOICE" = "itunes" ]; then
+if [ "$COVER_CORE" = "yes" ] || [ "$COVER_DESCRIPTION" = "yes" ]; then
     while true; do
-        read -r -p "Apply this iTunes metadata preview? [y/N]: " apply_choice
+        read -r -p "Apply this metadata preview? [y/N]: " apply_choice
         case "$apply_choice" in
             y|Y|yes|YES) break ;;
             n|N|no|NO|"")
-                echo "Cancelled metadata update. Kept EPUB main metadata from OPF."
+                echo "Cancelled metadata update. Kept EPUB metadata from OPF."
                 exit 0
                 ;;
             *) echo "Invalid selection. Enter y or n." ;;
         esac
     done
 
-    ESCAPED_TITLE=$(xml_escape "$FINAL_TITLE")
-    ESCAPED_AUTHOR=$(xml_escape "$FINAL_AUTHOR")
-    ESCAPED_PUBLISHER=$(xml_escape "$FINAL_PUBLISHER")
-    ESCAPED_DESCRIPTION=$(xml_escape "$FINAL_DESCRIPTION")
+    ESCAPED_TITLE=""
+    ESCAPED_AUTHOR=""
+    ESCAPED_PUBLISHER=""
+    ESCAPED_DESCRIPTION=""
+
+    if [ "$COVER_CORE" = "yes" ]; then
+        ESCAPED_TITLE=$(xml_escape "${ITUNES_TITLE:-}")
+        ESCAPED_AUTHOR=$(xml_escape "${ITUNES_AUTHOR:-}")
+        ESCAPED_PUBLISHER=$(xml_escape "${ITUNES_PUBLISHER:-}")
+    fi
+    if [ "$COVER_DESCRIPTION" = "yes" ]; then
+        ESCAPED_DESCRIPTION=$(xml_escape "${ITUNES_DESCRIPTION:-}")
+    fi
 
     TITLE="$ESCAPED_TITLE" AUTHOR="$ESCAPED_AUTHOR" PUBLISHER="$ESCAPED_PUBLISHER" DESCRIPTION="$ESCAPED_DESCRIPTION" \
     perl -0777 -i -pe '
@@ -366,7 +385,7 @@ if [ "$CHOICE" = "itunes" ]; then
             }
         }
     ' "$DECRYPTED_OPF_PATH"
-    echo "Applied iTunes main metadata to decrypted OPF."
+    echo "Applied selected iTunes metadata to decrypted OPF."
 else
-    echo "Kept EPUB main metadata from OPF."
+    echo "Kept EPUB metadata from OPF."
 fi
