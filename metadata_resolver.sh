@@ -299,7 +299,3 @@ if [ "$CHOICE" = "itunes" ]; then
 else
     echo "Kept EPUB metadata from OPF."
 fi
-
-FINAL_METADATA_FILE="$DECRYPTED_BOOK_DIR/final.metadata.opf"
-cp "$DECRYPTED_OPF_PATH" "$FINAL_METADATA_FILE"
-echo "Final metadata file generated: $FINAL_METADATA_FILE"

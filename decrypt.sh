@@ -51,6 +51,24 @@ function printBookMenu {
     done
 }
 
+function packageEpub {
+    local sourceDir="$1"
+    local outputFile="$2"
+
+    (
+        cd "$sourceDir" || exit 1
+
+        if [ ! -f "mimetype" ]; then
+            echo "Missing mimetype file in decrypted EPUB directory: $sourceDir" >&2
+            exit 1
+        fi
+
+        rm -f "$outputFile"
+        zip -X -0 "$outputFile" mimetype
+        zip -X -r "$outputFile" . -x mimetype
+    )
+}
+
 while true
 do
     printBookMenu
@@ -88,11 +106,12 @@ do
         rm -rf "$copiedFilePath"
 
         # convert it to an actual epub...
-        cd "./decrypted_books/${fileName%.epub}_decrypted.epub" || continue
-        zip -r "../${fileName}" .
+        if ! packageEpub "./decrypted_books/${fileName%.epub}_decrypted.epub" "../${fileName}"; then
+            echo "Failed to package EPUB: ./decrypted_books/${fileName}"
+            continue
+        fi
 
         # and now we clean up.
-        cd ../../ || continue
         rm -rf "./decrypted_books/${fileName%.epub}_decrypted.epub"
         echo "Finished: ./decrypted_books/${fileName}"
 
